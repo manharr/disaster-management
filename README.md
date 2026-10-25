@@ -2,12 +2,6 @@
 
 **Description:** A cloud-based platform for reporting emergency incidents, managing disaster information, coordinating response teams, and tracking the status of rescue operations.
 
----
-
-> **Academic Group Project Notice:** This application is developed for an academic evaluation demonstrating **Cloud Computing** and **Internet of Things (IoT)** principles. Sensor readings (water-level, temperature, smoke) are software simulations designed for demonstration on standard laptops and do not connect to physical hardware devices or real-world municipal emergency services.
-
----
-
 ## 1. Problem Statement & Objectives
 
 ### Problem Statement
