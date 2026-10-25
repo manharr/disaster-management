@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    function isResponseTeam() {
+      return isAuthenticated() && getUserData().role == 'response_team';
+    }
+
+    function isAssignedTeam(teamId) {
+      return isResponseTeam() && getUserData().teamId == teamId;
+    }
+
+    // 1. Users collection
+    // Citizens and team members can create their profile upon registration, but role cannot be set to 'admin'
+    // Profile updates cannot alter role field unless done by admin
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId && 
+                    request.resource.data.role in ['citizen', 'response_team'] &&
+                    request.resource.data.role != 'admin';
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 2. Incidents collection
+    // Citizens can create incidents and read only their own.
+    // Admins have full access to review, verify, reject, assign.
+    // Response teams can view incidents assigned to their team and update progress notes / status.
+    match /incidents/{incidentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.reporterId == request.auth.uid ||
+        isAdmin() ||
+        (isResponseTeam() && resource.data.assignedTeamId == getUserData().teamId)
+      );
+
+      // Citizens can create emergency reports with initial status 'Reported' and no admin fields
+      allow create: if isAuthenticated() && 
+                    request.resource.data.reporterId == request.auth.uid &&
+                    request.resource.data.status == 'Reported' &&
+                    request.resource.data.verificationState == 'Pending Review';
+
+      // Updates:
+      // - Admins can update any field (status, priority, assignment, reviewNotes)
+      // - Response teams can update status to 'In Progress' or 'Resolved' and add progressNotes if assigned
+      // - Citizens cannot update once submitted
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (isResponseTeam() && 
+         resource.data.assignedTeamId == getUserData().teamId &&
+         request.resource.data.reporterId == resource.data.reporterId &&
+         request.resource.data.assignedTeamId == resource.data.assignedTeamId &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'progressNotes', 'updatedAt', 'statusHistory']))
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // 3. Teams collection
+    // Managed solely by Administrators. Response teams can read.
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 4. Assignments collection
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        (isResponseTeam() && resource.data.teamId == getUserData().teamId)
+      );
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isResponseTeam() && resource.data.teamId == getUserData().teamId);
+    }
+
+    // 5. IoT Sensor Devices
+    match /sensorDevices/{deviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 6. IoT Sensor Readings (Demonstration Telemetry Stream)
+    // In production, an authenticated gateway or service would write these.
+    // Here, authenticated simulator clients submit valid simulation readings.
+    match /sensorReadings/{readingId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+                    request.resource.data.isSimulated == true &&
+                    request.resource.data.sensorType in ['water-level', 'temperature', 'smoke'];
+      allow update, delete: if isAdmin();
+    }
+
+    // 7. IoT Sensor Alerts
+    match /sensorAlerts/{alertId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.isSimulated == true;
+      allow update: if isAdmin(); // To acknowledge or resolve alert
+      allow delete: if isAdmin();
+    }
+
+    // 8. Notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // 9. Audit Logs
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Immutable audit trail
+    }
+  }
+}
