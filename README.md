@@ -176,16 +176,7 @@ firebase deploy --only hosting
 
 ---
 
-## 10. Suggested Four-Member Academic Division
-
-- **Member 1 (Citizen & Reporting Specialist):** Citizen registration, login, emergency incident reporting form, GPS coordinates, and incident tracking timeline.
-- **Member 2 (IoT Simulation & Telemetry Specialist):** Virtual sensors (Water/Temp/Smoke), physics random walks, simulation intervals, demo scenarios, and threshold alert debouncing.
-- **Member 3 (Cloud Architecture & Security Specialist):** Firebase centralized config, Firestore schema, declarative security rules (`firestore.rules`), hosting setup, and environment management.
-- **Member 4 (Admin Command, Teams & Analytics Specialist):** Admin Command Center, dispatching workflow, response team portal, real-time analytics calculations, and Leaflet map integration.
-
----
-
-## 11. Viva Defense Questions & Accurate Answers
+## 10. Viva Defense Questions & Accurate Answers
 
 **Q1: How does the software simulator model IoT sensors without hardware?**  
 *Answer:* The `IoTSimulator` module simulates physics by generating bounded random walks for water level ($cm$), temperature ($^\circ C$), and smoke index ($0\text{--}100$), packaging them into structured telemetry payloads and sending them via the Firebase SDK.
@@ -201,7 +192,7 @@ firebase deploy --only hosting
 
 ---
 
-## 12. Limitations & Future Scope
+## 11. Limitations & Future Scope
 
 ### Limitations
 - IoT sensors run within the browser runtime as an academic simulation rather than physical microcontrollers (e.g. ESP32).
